@@ -65,4 +65,4 @@ playwright install firefox
   * **SSH:** Password-less Key-based authentication.
   * **Firewall:** UFW enabled, allowing only SSH, Samba, and Tailscale traffic.
 ---
-Maintained by [nTune1030](ntune@protonmail.com)
+Maintained by [nTune1030]()
