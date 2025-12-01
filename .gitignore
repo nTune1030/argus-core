@@ -1,0 +1,17 @@
+# Secrets and Credentials
+.nas_secrets
+.env
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Excluded Projects
+ebay_scanner.py
+plot_prices.py
+ebay_prices.csv
+price_trend.png
