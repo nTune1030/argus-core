@@ -2,7 +2,7 @@
 
 # Use this file in crontab to load secrets before health_check.py
 # 1. Define Paths
-USER_HOME="/home/ntune1030"
+USER_HOME="/home/<change_me>"
 SECRETS_FILE="$USER_HOME/.nas_secrets"
 PYTHON_EXEC="$USER_HOME/scripts/venv/bin/python3"
 SCRIPT_FILE="$USER_HOME/scripts/health_check.py"
