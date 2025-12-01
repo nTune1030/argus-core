@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- CONFIGURATION ---
-TARGET_USER="ntune1030"
+TARGET_USER="$USER"
 TARGET_HOME="/home/$TARGET_USER"
 LOG_FILE="/var/log/nas_maintenance.log"
 SECRETS_FILE="$TARGET_HOME/.nas_secrets"

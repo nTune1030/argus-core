@@ -7,7 +7,7 @@ LOG_RETENTION="2weeks"
 # Paths (Sanitized using $HOME and $USER)
 # Note: When running as Root via Cron, $HOME is /root. 
 # We must explicitly define the target user for cleanup.
-TARGET_USER="ntune1030"
+TARGET_USER="$USER"
 TARGET_HOME="/home/$TARGET_USER"
 
 DOWNLOADS_DIR="$TARGET_HOME/Downloads"
