@@ -31,7 +31,7 @@ The system operates on a **"Set and Forget"** philosophy:
 │   ├── venv/             # Python Virtual Environment
 │   ├── ebay_scanner.py   # The Market Watcher (not tracked)
 │   ├── plot_prices.py    # The Data Analyst (not tracked)
-│   ├── health_check.py   # The Doctor
+│   ├── health_check.py   # The Doctor (In crontab run `run_health_check.sh`)
 │   └── maintain_system.sh# The Janitor
 └── nas_repo/             # This Git Repository (Version Control)
 ```
@@ -47,6 +47,7 @@ The system operates on a **"Set and Forget"** philosophy:
 ## 🛠️ Setup & Configuration
 1. **Environment Variables**
 This project relies on a secured secrets file `(~/.nas_secrets)` to handle credentials. **Do not commit this file.**
+**Run `run_health_check.sh` to load credentials in crontab**
 ```bash
 export NAS_EMAIL_USER="your_email@protonmail.com"
 export NAS_EMAIL_PASS="your_app_password"
