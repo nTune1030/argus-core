@@ -5,7 +5,7 @@ DAYS_TO_KEEP=30
 LOG_RETENTION="2weeks"
 
 # We need to know the user to clean their specific Trash
-TARGET_USER="ntune1030"
+TARGET_USER="<change_me>"
 TARGET_HOME="/home/$TARGET_USER"
 DOWNLOADS_DIR="$TARGET_HOME/Downloads"
 

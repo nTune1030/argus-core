@@ -7,7 +7,7 @@
 
 # 1. CONFIGURATION
 # ----------------
-TARGET_USER="ntune1030"  # <--- Change this to your user
+TARGET_USER="<change_me>"  # <--- Change this to your user
 HOME_DIR="/home/$TARGET_USER"
 SECRETS_FILE="$HOME_DIR/.nas_secrets"
 VENV_ACTIVATE="$HOME_DIR/scripts/venv/bin/activate"
