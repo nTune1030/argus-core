@@ -72,4 +72,4 @@ playwright install firefox
   * **Firewall:** UFW enabled, allowing only SSH, Samba, and Tailscale traffic.
   * **Isolation:** Scraper runs in a sandboxed Firefox instance.
 ---
-Maintained by [nTune1030]()
+Maintained by [nTune1030](https://www.github.com/nTune1030)
