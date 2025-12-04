@@ -15,3 +15,5 @@ ebay_scanner.py
 plot_prices.py
 ebay_prices.csv
 price_trend.png
+amazon_scanner.py
+
