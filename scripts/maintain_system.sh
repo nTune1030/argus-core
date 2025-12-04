@@ -1,15 +1,23 @@
 #!/bin/bash
 
+# =================================================================
+#  SYSTEM MAINTENANCE (Dynamic)
+#  Updates OS and cleans logs.
+# =================================================================
 
-# --- CONFIGURATION ---
+# 1. DYNAMIC CONFIGURATION
+# ------------------------
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+USER_HOME="$(dirname "$SCRIPT_DIR")"
+
+# Note: We don't need TARGET_USER here, just the path to secrets
+
 LOG_FILE="/var/log/nas_maintenance.log"
-USER_HOME="/home/ntune1030"
 SECRETS_FILE="$USER_HOME/.nas_secrets"
 PYTHON_SCRIPT="$USER_HOME/scripts/send_log.py"
-# ---------------------
 
-# 1. Start Logging
-# Redirect all output (stdout and stderr) to the log file
+# 2. START LOGGING
+# ----------------
 exec > >(tee -i $LOG_FILE)
 exec 2>&1
 
@@ -17,28 +25,30 @@ echo "====================================================="
 echo "NAS MAINTENANCE STARTED: $(date)"
 echo "====================================================="
 
-# 2. Load Secrets (So we can email later)
+# 3. LOAD SECRETS
+# ---------------
 if [ -f "$SECRETS_FILE" ]; then
     source "$SECRETS_FILE"
     export NAS_EMAIL_USER
     export NAS_EMAIL_PASS
 else
-    echo "ERROR: Secrets file not found at $SECRETS_FILE"
+    echo "❌ Error: Secrets file not found at $SECRETS_FILE"
 fi
 
-# 3. Update APT
+# 4. UPDATE APT
+# -------------
 echo -e "\n--- Updating APT ---"
 apt-get update
 apt-get full-upgrade -y
 apt-get autoremove -y
 apt-get autoclean -y
 
-# 4. Update Snap (If exists)
+# 5. UPDATE SNAPS
+# ---------------
 if command -v snap >/dev/null; then
     echo -e "\n--- Updating Snaps ---"
     snap refresh
     
-    # Cleanup old revisions
     echo "Cleaning old snaps..."
     snap list --all | awk '/disabled/{print $1, $3}' | \
         while read snapname revision; do
@@ -46,11 +56,13 @@ if command -v snap >/dev/null; then
         done
 fi
 
-# 5. Clean Logs
+# 6. VACUUM LOGS
+# --------------
 echo -e "\n--- Vacuuming Logs ---"
 journalctl --vacuum-size=100M
 
-# 6. Check for Reboot
+# 7. CHECK REBOOT
+# ---------------
 REBOOT_MSG=""
 if [ -f /var/run/reboot-required ]; then
     echo -e "\n*** SYSTEM REQUIRES REBOOT ***"
@@ -61,7 +73,11 @@ echo "====================================================="
 echo "MAINTENANCE COMPLETE: $(date)"
 echo "====================================================="
 
-# 7. Email the Report
-# We call python using the full path
+# 8. EMAIL REPORT
+# ---------------
 echo "Sending email report..."
-python3 "$PYTHON_SCRIPT" "NAS Maintenance Report $REBOOT_MSG" "$LOG_FILE"
+if [ -f "$PYTHON_SCRIPT" ]; then
+    python3 "$PYTHON_SCRIPT" "NAS Maintenance Report $REBOOT_MSG" "$LOG_FILE"
+else
+    echo "❌ Python emailer not found."
+fi

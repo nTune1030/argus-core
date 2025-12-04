@@ -1,65 +1,82 @@
 #!/bin/bash
 
-# --- CONFIGURATION ---
-# How many days to keep files?
+# =================================================================
+#  SMART CLEANUP (Dynamic)
+#  Runs as Root, but cleans the Owner's files.
+# =================================================================
+
+# 1. DYNAMIC CONFIGURATION
+# ------------------------
+# Detect where this script is living to find the real user
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"  # e.g., /home/ntune1030/scripts
+USER_HOME="$(dirname "$SCRIPT_DIR")"        # e.g., /home/ntune1030
+TARGET_USER="$(basename "$USER_HOME")"      # e.g., ntune1030
+
+# Configuration
 DAYS_TO_KEEP=30
 LOG_RETENTION="2weeks"
 
-# Paths
-USER_HOME="/home/ntune1030"
+# Dynamic Paths
 DOWNLOADS_DIR="$USER_HOME/Downloads"
-TRASH_DIR="$USER_HOME/.local/share/Trash/files"
 LOG_FILE="/var/log/smart_cleanup.log"
-
-# Email Settings
 PYTHON_SCRIPT="$USER_HOME/scripts/send_log.py"
 SECRETS_FILE="$USER_HOME/.nas_secrets"
-# ---------------------
 
-# 1. Start Logging
+# 2. START LOGGING
+# ----------------
 exec > >(tee -i $LOG_FILE)
 exec 2>&1
 
 echo "====================================================="
 echo "SMART CLEANUP STARTED: $(date)"
+echo "TARGET USER DETECTED: $TARGET_USER"
 echo "====================================================="
 
-# 2. Load Secrets (for email)
+# 3. LOAD SECRETS (For Email)
+# ---------------------------
 if [ -f "$SECRETS_FILE" ]; then
     source "$SECRETS_FILE"
     export NAS_EMAIL_USER
     export NAS_EMAIL_PASS
+else
+    echo "⚠️ Warning: Secrets file not found at $SECRETS_FILE"
 fi
 
-# 3. Clean 'Downloads' (Older than 30 Days)
+# 4. CLEAN DOWNLOADS
+# ------------------
 echo -e "\n--- Cleaning Downloads (Older than $DAYS_TO_KEEP days) ---"
 if [ -d "$DOWNLOADS_DIR" ]; then
-    # Find and print files first, then delete
     find "$DOWNLOADS_DIR" -mindepth 1 -type f -mtime +$DAYS_TO_KEEP -print -delete
-    # Clean empty directories in Downloads
     find "$DOWNLOADS_DIR" -mindepth 1 -type d -empty -delete
 else
-    echo "Downloads directory not found."
+    echo "Downloads directory not found at $DOWNLOADS_DIR"
 fi
 
-# 4. Clean User Trash (Older than 30 Days)
+# 5. CLEAN TRASH
+# --------------
 echo -e "\n--- Emptying Trash (Older than $DAYS_TO_KEEP days) ---"
-# Pipe "yes" into the command to auto-approve any prompts
-yes | sudo -u ntune1030 trash-empty $DAYS_TO_KEEP
-echo "Trash compacted."
+# We switch from Root to the Target User to clean THEIR trash correctly
+if command -v trash-empty &> /dev/null; then
+    yes | sudo -u "$TARGET_USER" trash-empty $DAYS_TO_KEEP
+    echo "Trash compacted."
+else
+    echo "❌ Error: 'trash-cli' is not installed."
+fi
 
-# 5. Vacuum System Logs
+# 6. VACUUM SYSTEM LOGS
+# ---------------------
 echo -e "\n--- Vacuuming System Logs ---"
-# Keep only the last 2 weeks of journals to save space
 journalctl --vacuum-time=$LOG_RETENTION
 
 echo "====================================================="
 echo "CLEANUP COMPLETE: $(date)"
 echo "====================================================="
 
-# 6. Email the Report
-# We check if the log has interesting content (more than just headers)
-# If file line count is < 15, it probably didn't do anything, so maybe don't spam?
-# For now, we will always send it so you know it worked.
+# 7. EMAIL REPORT
+# ---------------
 echo "Sending email report..."
-python3 "$PYTHON_SCRIPT" "Monthly Cleanup Report" "$LOG_FILE"
+if [ -f "$PYTHON_SCRIPT" ]; then
+    python3 "$PYTHON_SCRIPT" "Monthly Cleanup Report" "$LOG_FILE"
+else
+    echo "❌ Python emailer not found."
+fi
