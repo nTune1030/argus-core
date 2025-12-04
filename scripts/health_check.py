@@ -9,13 +9,15 @@ from pathlib import Path
 import emails  # Imports your local emails.py file
 
 # --- CONFIGURATION ---
+# Auto-detects home directory (e.g., /home/ntune1030) for portability
+HOME_DIR = Path.home()
 USER_EMAIL = os.getenv("NAS_EMAIL_USER")
 SENDER = USER_EMAIL
 RECIPIENT = USER_EMAIL
 BASE_BODY = "The following resource alerts were triggered on your NAS system:\n"
 
-# Use Pathlib for robust path handling
-SD_CARD_PATH = Path("/home/ntune1030/nas_storage")
+# Path to the mounted storage
+SD_CARD_PATH = HOME_DIR / "nas_storage"
 
 # --- THRESHOLDS ---
 CPU_LIMIT_PERCENT = 80
@@ -36,21 +38,16 @@ def is_disk_space_low() -> bool:
 
 def is_memory_low() -> bool:
     """Returns True if available Memory is below limit."""
-    # Convert MB to Bytes for comparison
     limit_bytes = MEM_MIN_MB * 1024 * 1024
     return psutil.virtual_memory().available < limit_bytes
 
 def is_network_broken() -> bool:
-    """
-    Returns True if localhost cannot be resolved.
-    Improved: Checks if resolution succeeds rather than checking for a specific IP string.
-    This handles 127.0.1.1 (Debian) and ::1 (IPv6) cases correctly.
-    """
+    """Returns True if localhost cannot be resolved."""
     try:
         socket.gethostbyname('localhost')
-        return False  # Resolution successful, network is fine
+        return False
     except socket.error:
-        return True   # Resolution failed
+        return True
 
 def is_sd_card_low() -> bool:
     """Returns True if SD Card space is low or drive is missing."""
@@ -65,13 +62,15 @@ def is_sd_card_low() -> bool:
         return True
 
 def main():
-    # 1. Validation: Fail fast if config is missing
+    # 1. Validation
     if not USER_EMAIL:
-        # We print to stderr so Cron might still catch this specific configuration error
         print("Error: NAS_EMAIL_USER environment variable is not set.", file=sys.stderr)
         sys.exit(1)
 
-    # 2. Define Checks: (Function, Error Message)
+    # 2. Check for Interactive Mode (Is a human running this?)
+    # If running manually, we print PASS/FAIL. If Cron, we stay silent.
+    interactive = sys.stdout.isatty()
+
     health_checks = [
         (is_cpu_high, f"⚠️ Critical: CPU usage > {CPU_LIMIT_PERCENT}%"),
         (is_disk_space_low, f"⚠️ Critical: Root Disk Free < {DISK_MIN_FREE_PERCENT}%"),
@@ -82,42 +81,46 @@ def main():
 
     active_alerts = []
 
+    if interactive:
+        print(f"🔍 Running diagnostics on {socket.gethostname()}...")
+
     # 3. Execution Loop
-    # Removed "Running system health checks..." print to keep Cron silent
     for check_func, error_msg in health_checks:
         if check_func():
-            # Only print FAIL logic if you are debugging manually,
-            # otherwise, keep it silent unless sending the email.
+            # FAIL
+            if interactive:
+                print(f"❌ [FAIL] {check_func.__name__} -> {error_msg}")
             active_alerts.append(error_msg)
+        else:
+            # PASS
+            if interactive:
+                print(f"✅ [PASS] {check_func.__name__}")
 
-    # 4. Reporting: Send ONE email if there are alerts
+    # 4. Reporting
     if active_alerts:
         alert_count = len(active_alerts)
         subject = f"[NAS ALERT] {alert_count} System Issue{'s' if alert_count > 1 else ''} Detected"
-
-        # List comprehension for cleaner string joining
         alert_list_str = "\n".join(f"- {msg}" for msg in active_alerts)
         full_body = f"{BASE_BODY}\n{alert_list_str}\n\nPlease check Cockpit or SSH immediately."
 
-        # Printing here is acceptable as it will log that an email attempt is happening
+        # We allow this print in Cron because it explains why an email is being sent.
         print(f"Issues detected. Triggering email to {RECIPIENT}...")
 
         email = emails.generate_email(
             sender=SENDER,
             recipient=RECIPIENT,
             subject=subject,
-            body=full_body,
-            attachment_path=None
+            body=full_body
         )
 
         if emails.send_email(email):
             print("✅ Alert email sent successfully.")
         else:
             print("❌ Failed to send alert email.")
-    
-    # REMOVED the 'else' block printing "All systems healthy."
-    # This ensures the script produces NO OUTPUT when successful.
-    # No output = No Cron email.
+    else:
+        # Success message ONLY for humans, not Cron.
+        if interactive:
+            print("\n🎉 All systems healthy. No email sent.")
 
 if __name__ == "__main__":
     main()
